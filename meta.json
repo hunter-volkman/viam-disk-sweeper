@@ -1,0 +1,19 @@
+{
+  "$schema": "https://dl.viam.dev/module.schema.json",
+  "module_id": "hunter:disk-sweeper",
+  "visibility": "private",
+  "url": "",
+  "description": "Generic worker for sweeping disk space",
+  "models": [
+    {
+      "api": "rdk:component:generic",
+      "model": "hunter:disk-sweeper:worker",
+      "short_description": "Generic worker for sweeping disk space",
+      "markdown_link": "README.md#model-hunterdisk-sweeperworker"
+    }
+  ],
+  "applications": null,
+  "markdown_link": "README.md",
+  "entrypoint": "./run.sh",
+  "first_run": ""
+}
