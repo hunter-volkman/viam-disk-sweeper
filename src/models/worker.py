@@ -24,41 +24,21 @@ class Worker(Generic, EasyResource):
     def new(
         cls, config: ComponentConfig, dependencies: Mapping[ResourceName, ResourceBase]
     ) -> Self:
-        """This method creates a new instance of this Worker component.
-        
-        Args:
-            config (ComponentConfig): The configuration for this resource
-            dependencies (Mapping[ResourceName, ResourceBase]): The dependencies
-            
-        Returns:
-            Self: The resource
-        """
+        """Create a new Worker instance."""
         return super().new(config, dependencies)
     
     @classmethod
     def validate_config(
         cls, config: ComponentConfig
     ) -> Tuple[Sequence[str], Sequence[str]]:
-        """This method validates the configuration object received from the machine.
-        
-        Args:
-            config (ComponentConfig): The configuration for this resource
-            
-        Returns:
-            Tuple[Sequence[str], Sequence[str]]: A tuple of (required_deps, optional_deps)
-        """
-        return [], []  # No dependencies needed
+        """Validate configuration."""
+        return [], []
     
     def reconfigure(
         self, config: ComponentConfig, dependencies: Mapping[ResourceName, ResourceBase]
     ):
-        """This method allows dynamic updates when receiving a new config.
-        
-        Args:
-            config (ComponentConfig): The new configuration
-            dependencies (Mapping[ResourceName, ResourceBase]): Any dependencies
-        """
-        # Parse attributes safely
+        """Apply configuration updates."""
+        # Parse attributes from config
         attrs = {}
         if hasattr(config, 'attributes') and config.attributes:
             if hasattr(config.attributes, 'fields') and config.attributes.fields:
@@ -69,14 +49,21 @@ class Worker(Generic, EasyResource):
                     except json.JSONDecodeError:
                         self.logger.warning("Failed to parse config attributes")
         
-        # Apply configuration with defaults
+        # Required configuration
         self.target_path = Path(attrs.get("target_path", "/root/.viam/video-storage"))
+        
+        # Optional configuration with defaults
         self.days_old = attrs.get("days_old", 7)
         self.dry_run = attrs.get("dry_run", True)
         
+        # NEW: Accept list of active components in config
+        # This makes the module deterministic and testable
+        self.active_components = attrs.get("active_components", [])
+        
         self.logger.info(
             f"Worker configured: path={self.target_path}, "
-            f"days_old={self.days_old}, dry_run={self.dry_run}"
+            f"days_old={self.days_old}, dry_run={self.dry_run}, "
+            f"active_components={len(self.active_components)}"
         )
         
         return super().reconfigure(config, dependencies)
@@ -88,15 +75,7 @@ class Worker(Generic, EasyResource):
         timeout: Optional[float] = None,
         **kwargs
     ) -> Mapping[str, ValueTypes]:
-        """Execute worker commands: status, analyze, or sweep.
-        
-        Args:
-            command: Command dictionary with 'command' key
-            timeout: Optional timeout
-            
-        Returns:
-            Command results dictionary
-        """
+        """Execute worker commands."""
         cmd = command.get("command", "status")
         
         self.logger.debug(f"Executing command: {cmd}")
@@ -108,14 +87,12 @@ class Worker(Generic, EasyResource):
         elif cmd == "sweep":
             return self._sweep()
         else:
-            error_msg = f"Unknown command: '{cmd}'. Valid commands: status, analyze, sweep"
-            self.logger.error(error_msg)
-            raise ValueError(error_msg)
+            raise ValueError(f"Unknown command: '{cmd}'. Valid commands: status, analyze, sweep")
     
     async def get_geometries(
         self, *, extra: Optional[Dict[str, Any]] = None, timeout: Optional[float] = None
     ) -> List[Geometry]:
-        """Get geometries (not implemented for this component)."""
+        """Get geometries (not implemented)."""
         return []
     
     def _get_status(self) -> Dict[str, Any]:
@@ -124,6 +101,7 @@ class Worker(Generic, EasyResource):
             "target_path": str(self.target_path),
             "days_old": self.days_old,
             "dry_run": self.dry_run,
+            "active_components": len(self.active_components),
             "exists": self.target_path.exists()
         }
         
@@ -150,55 +128,20 @@ class Worker(Generic, EasyResource):
         
         return status
     
-    def _get_active_resources(self) -> List[str]:
-        """Extract active resource names from machine configuration."""
-        config_dir = Path("/root/.viam")
-        
-        try:
-            # Find all config files
-            config_files = list(config_dir.glob("cached_cloud_config_*.json"))
-            
-            if not config_files:
-                self.logger.warning("No cached config files found")
-                return []
-            
-            # Use most recent config
-            latest = max(config_files, key=lambda f: f.stat().st_mtime)
-            self.logger.debug(f"Reading config from: {latest.name}")
-            
-            with open(latest, 'r') as f:
-                config = json.load(f)
-            
-            # Extract component names
-            resources = []
-            for component in config.get("components", []):
-                name = component.get("name", "")
-                if name:
-                    resources.append(name)
-            
-            self.logger.info(f"Found {len(resources)} active resources")
-            return resources
-            
-        except json.JSONDecodeError as e:
-            self.logger.error(f"Failed to parse config JSON: {e}")
-            return []
-        except Exception as e:
-            self.logger.error(f"Failed to read machine config: {e}")
-            return []
-    
     def _analyze(self) -> Dict[str, Any]:
         """Analyze directories and identify cleanup candidates."""
         if not self.target_path.exists():
             return {
                 "error": f"Target path does not exist: {self.target_path}",
-                "active_resources": [],
+                "active_resources": self.active_components,
                 "orphaned_directories": [],
                 "eligible_for_cleanup": 0,
                 "total_orphans": 0,
                 "recoverable_mb": 0
             }
         
-        active = set(self._get_active_resources())
+        # Use configured active components
+        active = set(self.active_components)
         orphans = []
         
         try:
@@ -206,7 +149,7 @@ class Worker(Generic, EasyResource):
                 if not item.is_dir():
                     continue
                 
-                # Check if orphaned
+                # Directory is orphaned if not in active components
                 if item.name not in active:
                     try:
                         stat = item.stat()
@@ -238,7 +181,7 @@ class Worker(Generic, EasyResource):
             self.logger.error(f"Failed to scan directory: {e}")
             return {
                 "error": f"Failed to scan: {e}",
-                "active_resources": list(active),
+                "active_resources": self.active_components,
                 "orphaned_directories": [],
                 "eligible_for_cleanup": 0,
                 "total_orphans": 0,
@@ -253,7 +196,7 @@ class Worker(Generic, EasyResource):
         orphans.sort(key=lambda x: x["size_mb"], reverse=True)
         
         return {
-            "active_resources": list(active),
+            "active_resources": self.active_components,
             "orphaned_directories": orphans,
             "eligible_for_cleanup": len(eligible),
             "total_orphans": len(orphans),
