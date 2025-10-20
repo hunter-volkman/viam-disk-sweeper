@@ -38,6 +38,8 @@ class Worker(Generic, EasyResource):
         self, config: ComponentConfig, dependencies: Mapping[ResourceName, ResourceBase]
     ):
         """Apply configuration updates."""
+        super().reconfigure(config, dependencies)
+
         # Parse attributes from config
         attrs = {}
         if hasattr(config, 'attributes') and config.attributes:
@@ -56,8 +58,7 @@ class Worker(Generic, EasyResource):
         self.days_old = attrs.get("days_old", 7)
         self.dry_run = attrs.get("dry_run", True)
         
-        # NEW: Accept list of active components in config
-        # This makes the module deterministic and testable
+        # Accept list of active components in config for determining any orphans
         self.active_components = attrs.get("active_components", [])
         
         self.logger.info(
@@ -65,8 +66,6 @@ class Worker(Generic, EasyResource):
             f"days_old={self.days_old}, dry_run={self.dry_run}, "
             f"active_components={len(self.active_components)}"
         )
-        
-        return super().reconfigure(config, dependencies)
     
     async def do_command(
         self,
