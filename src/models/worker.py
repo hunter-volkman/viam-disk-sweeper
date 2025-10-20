@@ -12,7 +12,7 @@ from viam.proto.common import Geometry, ResourceName
 from viam.resource.base import ResourceBase
 from viam.resource.easy_resource import EasyResource
 from viam.resource.types import Model, ModelFamily
-from viam.utils import ValueTypes
+from viam.utils import ValueTypes, struct_to_dict
 
 
 class Worker(Generic, EasyResource):
@@ -39,15 +39,7 @@ class Worker(Generic, EasyResource):
     ):
         """Apply configuration updates."""
         # Parse attributes from config
-        attrs = {}
-        if hasattr(config, 'attributes') and config.attributes:
-            if hasattr(config.attributes, 'fields') and config.attributes.fields:
-                json_field = config.attributes.fields.get("json", None)
-                if json_field and hasattr(json_field, 'string_value'):
-                    try:
-                        attrs = json.loads(json_field.string_value)
-                    except json.JSONDecodeError:
-                        self.logger.warning("Failed to parse config attributes")
+        attrs = struct_to_dict(config.attributes)
         
         # Required configuration
         self.target_path = Path(attrs.get("target_path", "/root/.viam/video-storage"))
