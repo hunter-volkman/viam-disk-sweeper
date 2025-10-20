@@ -47,8 +47,8 @@ class Worker(Generic, EasyResource):
         # Optional configuration with defaults
         self.days_old = attrs.get("days_old", 7)
         self.dry_run = attrs.get("dry_run", True)
-        
-        # Accept list of active components in config for determining any orphans
+
+        # Accept list of active components to determine any orphans
         self.active_components = attrs.get("active_components", [])
         
         self.logger.info(
