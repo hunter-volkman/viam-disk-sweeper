@@ -1,8 +1,8 @@
 {
   "$schema": "https://dl.viam.dev/module.schema.json",
   "module_id": "hunter:disk-sweeper",
-  "visibility": "private",
-  "url": "",
+  "visibility": "public",
+  "url": "https://github.com/hunter-volkman/viam-disk-sweeper",
   "description": "Generic worker for sweeping disk space",
   "models": [
     {
