@@ -40,8 +40,6 @@ class Worker(Generic, EasyResource):
         """Apply configuration updates."""
         # Parse attributes from config
         attrs = struct_to_dict(config.attributes)
-
-        self.logger.info(f"PARSED ATTRS: {attrs}")
         
         # Required configuration
         self.target_path = Path(attrs.get("target_path", "/root/.viam/video-storage"))
