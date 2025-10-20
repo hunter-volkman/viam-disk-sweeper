@@ -38,8 +38,6 @@ class Worker(Generic, EasyResource):
         self, config: ComponentConfig, dependencies: Mapping[ResourceName, ResourceBase]
     ):
         """Apply configuration updates."""
-        super().reconfigure(config, dependencies)
-
         # Parse attributes from config
         attrs = {}
         if hasattr(config, 'attributes') and config.attributes:
