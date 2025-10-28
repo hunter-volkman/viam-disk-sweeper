@@ -1,15 +1,15 @@
 {
   "$schema": "https://dl.viam.dev/module.schema.json",
-  "module_id": "hunter:disk-sweeper",
+  "module_id": "viam-soleng:disk-sweeper",
   "visibility": "public",
   "url": "https://github.com/viam-soleng/viam-disk-sweeper",
   "description": "Generic worker for sweeping disk space",
   "models": [
     {
       "api": "rdk:component:generic",
-      "model": "hunter:disk-sweeper:worker",
+      "model": "viam-soleng:disk-sweeper:worker",
       "short_description": "Generic worker for sweeping disk space",
-      "markdown_link": "README.md#model-hunterdisk-sweeperworker"
+      "markdown_link": "README.md#model-viam-solengdisk-sweeperworker"
     }
   ],
   "applications": null,
