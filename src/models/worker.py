@@ -18,7 +18,7 @@ from viam.utils import ValueTypes, struct_to_dict
 class Worker(Generic, EasyResource):
     """Worker component that sweeps orphaned directories from decommissioned resources."""
     
-    MODEL: ClassVar[Model] = Model(ModelFamily("hunter", "disk-sweeper"), "worker")
+    MODEL: ClassVar[Model] = Model(ModelFamily("viam-soleng", "disk-sweeper"), "worker")
     
     @classmethod
     def new(
