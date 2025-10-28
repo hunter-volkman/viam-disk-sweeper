@@ -2,7 +2,7 @@
 
 A Viam module for sweeping disk space across device fleets. 
 
-## Model hunter:disk-sweeper:worker
+## Model viam-soleng:disk-sweeper:worker
 
 Provide a description of the model and any relevant information.
 
